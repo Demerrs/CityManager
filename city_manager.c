@@ -56,7 +56,7 @@ void add_report(const char *district_name, const char *role, const char *user) {
     }
 
     int report_id = 1;
-    snprintf(path, sizeof(path), "%s/reports.dat", district_name); // re-setam calea pe reports.dat
+    snprintf(path, sizeof(path), "%s/reports.dat", district_name);
     fd = open(path, O_RDONLY);
     if (fd != -1) {
         off_t size = lseek(fd, 0, SEEK_END); 
@@ -76,7 +76,7 @@ void add_report(const char *district_name, const char *role, const char *user) {
     printf("Category (road/lighting/flooding/other): "); scanf("%29s", record.issue_category);
     printf("Severity level (1/2/3):"); scanf("%d", &record.severity_level);
     
-    int c; while ((c = getchar()) != '\n' && c != EOF); // curatare buffer
+    int c; while ((c = getchar()) != '\n' && c != EOF);
     
     printf("Description:");
     fgets(record.description, sizeof(record.description), stdin);
@@ -87,9 +87,9 @@ void add_report(const char *district_name, const char *role, const char *user) {
         write(fd, &record, sizeof(ReportRecord));
         close(fd);
         log_action(district_name, role, user, "add");
-        printf("Raport adaugat cu succes.\n");
+        printf("Raport was added successfully.\n");
     } else {
-        perror("Eroare la deschiderea reports.dat pentru scriere");
+        perror("ERROR: Failed to open reports.dat for writing");
     }
 }
 
@@ -99,17 +99,17 @@ void list_reports(const char *district_name, const char *role, const char *user)
     
     struct stat st;
     if (stat(path, &st) == 0) {
-        printf("--- Informatii fisier ---\nDimensiune: %ld bytes\nPermisiuni: %o\n\n", st.st_size, st.st_mode & 0777);
+        printf("--- File Info ---\nDimension: %ld bytes\nPermisions: %o\n\n", st.st_size, st.st_mode & 0777);
     }
 
     int fd = open(path, O_RDONLY);
     if (fd == -1) {
-        printf("Nu exista rapoarte in districtul %s.\n", district_name);
+        printf("No raport founds in this district! %s.\n", district_name);
         return;
     }
 
     ReportRecord rec;
-    printf("Lista rapoarte:\n");
+    printf("Raport List:\n");
     printf("%-5s | %-15s | %-10s | %-10s\n", "ID", "Inspector", "Category", "Severity");
     printf("----------------------------------------------------\n");
     
@@ -127,7 +127,7 @@ void view_report(const char *district_name, int target_id, const char *role, con
     
     int fd = open(path, O_RDONLY);
     if (fd == -1) {
-        printf("Eroare la deschiderea fisierului de rapoarte.\n");
+        printf("ERROR: Failed to open raport file.\n");
         return;
     }
 
@@ -136,25 +136,25 @@ void view_report(const char *district_name, int target_id, const char *role, con
     while (read(fd, &rec, sizeof(ReportRecord)) == sizeof(ReportRecord)) {
         if (rec.report_id == target_id) {
             found = 1;
-            printf("--- Detalii Raport ID %d ---\n", rec.report_id);
+            printf("--- Details raport ID %d ---\n", rec.report_id);
             printf("Inspector: %s\n", rec.inspector_name);
-            printf("Locatie: X: %.2f, Y: %.2f\n", rec.x, rec.y);
-            printf("Categorie: %s\n", rec.issue_category);
-            printf("Severitate: %d\n", rec.severity_level);
-            printf("Descriere: %s\n", rec.description);
+            printf("Location: X: %.2f, Y: %.2f\n", rec.x, rec.y);
+            printf("Category: %s\n", rec.issue_category);
+            printf("Severity: %d\n", rec.severity_level);
+            printf("Description: %s\n", rec.description);
             printf("Timestamp: %s", ctime(&rec.timestamp));
             break;
         }
     }
     close(fd);
     
-    if (!found) printf("Raportul cu ID %d nu a fost gasit.\n", target_id);
+    if (!found) printf("Raport with ID %d not found.\n", target_id);
     else log_action(district_name, role, user, "view");
 }
 
 void remove_report(const char *district_name, int target_id, const char *role, const char *user) {
     if (strcmp(role, "manager") != 0) {
-        printf("Eroare: Doar rolul de 'manager' poate sterge rapoarte.\n");
+        printf("ERROR: Only manager can remove raport files.\n");
         return;
     }
 
@@ -163,7 +163,7 @@ void remove_report(const char *district_name, int target_id, const char *role, c
     
     int fd = open(path, O_RDWR);
     if (fd == -1) {
-        perror("Eroare la deschiderea fisierului");
+        perror("Error to open the file");
         return;
     }
 
@@ -178,7 +178,7 @@ void remove_report(const char *district_name, int target_id, const char *role, c
     }
 
     if (target_pos == -1) {
-        printf("Raportul cu ID %d nu a fost gasit.\n", target_id);
+        printf("Raport with ID %d not found.\n", target_id);
         close(fd);
         return;
     }
@@ -199,7 +199,7 @@ void remove_report(const char *district_name, int target_id, const char *role, c
     }
 
     if (ftruncate(fd, write_pos) == 0) {
-        printf("Raportul %d a fost sters cu succes.\n", target_id);
+        printf("Raport %d successfully removed.\n", target_id);
         char action_str[50];
         snprintf(action_str, sizeof(action_str), "remove_report %d", target_id);
         log_action(district_name, role, user, action_str);
@@ -210,7 +210,7 @@ void remove_report(const char *district_name, int target_id, const char *role, c
 
 void update_threshold(const char *district_name, int noul_prag, const char *role, const char *user) {
     if (strcmp(role, "manager") != 0) {
-        printf("Eroare: Doar rolul de 'manager' poate actualiza pragul.\n");
+        printf("ERROR: Only manager can set treeshold.\n");
         return;
     }
 
@@ -219,12 +219,12 @@ void update_threshold(const char *district_name, int noul_prag, const char *role
 
     struct stat st;
     if (stat(path, &st) == -1) {
-        perror("Eroare stat");
+        perror("ERROR stat");
         return;
     }
 
     if ((st.st_mode & 0777) != 0640) {
-        printf("Diagnostic: Permisiunile sunt %o, nu 640! Refuzam modificarea.\n", st.st_mode & 0777);
+        printf("Diagnostic: Permisions are %o, not 640! Modification declined.\n", st.st_mode & 0777);
         return;
     }
 
@@ -235,7 +235,7 @@ void update_threshold(const char *district_name, int noul_prag, const char *role
         write(fd, buffer, len);
         close(fd);
         
-        printf("Pragul a fost actualizat la %d.\n", noul_prag);
+        printf("Treeshold updated to %d.\n", noul_prag);
         char action_str[50];
         snprintf(action_str, sizeof(action_str), "update_threshold %d", noul_prag);
         log_action(district_name, role, user, action_str);
