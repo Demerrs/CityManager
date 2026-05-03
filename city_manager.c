@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <time.h>
+#include <dirent.h>
 
 #define MAX_CONDITIONS 10
 
@@ -59,6 +60,11 @@ void ensure_district_files_exist(const char *district_name) {
         close(fd_cfg);
         chmod(path, 0640);
     }
+
+    char linkpath[256];
+    snprintf(linkpath, sizeof(linkpath), "active_reports-%s", district_name);
+
+    symlink(path, linkpath);
 }
 
 int get_next_report_id(const char *district_name) {
@@ -300,6 +306,40 @@ void update_threshold(const char *district_name, int noul_prag, const char *role
     }
 }
 
+void check_links() {
+    DIR *dir = opendir(".");
+    if (!dir) {
+        perror("Error! Can't open current directory!'");
+        return;
+    }
+
+    struct dirent *entry;
+    printf("Scanning symlinks in current directory...\n");
+    printf("----------------------------------------------------\n");
+
+    while ((entry = readdir(dir)) != NULL) {
+        
+        if (strncmp(entry->d_name, "active_reports-", 15) == 0) {
+            struct stat lst;
+            
+            if (lstat(entry->d_name, &lst) == 0) {
+                
+                if (S_ISLNK(lst.st_mode)) {
+                    
+                    struct stat st;
+                    if (stat(entry->d_name, &st) == -1) {
+                        printf("[WARNING] Dangling link detected: '%s'. No destination!\n", entry->d_name);
+                    } else {
+                        printf("[OK] Valid link: '%s' pointing to existing directory.\n", entry->d_name);
+                    }
+                }
+            }
+        }
+    }
+    closedir(dir);
+    printf("Scan completed.\n");
+}
+
 int main(int argc, char *argv[]) {
     umask(0);
 
@@ -327,6 +367,9 @@ int main(int argc, char *argv[]) {
                 }
             }
         }
+        else if (strcmp(argv[i], "--check_links") == 0) { 
+            action = "check_links"; 
+        }
     }
 
     if (!action) {
@@ -340,6 +383,7 @@ int main(int argc, char *argv[]) {
     else if (strcmp(action, "remove_report") == 0) remove_report(target_district, target_id, role, user);
     else if (strcmp(action, "update_threshold") == 0) update_threshold(target_district, target_value, role, user);
     else if (strcmp(action, "filter") == 0) filter_reports(target_district, conditions, num_conditions, role, user);
+    else if (strcmp(action, "check_links") == 0) check_links();
 
     return 0;
 }
