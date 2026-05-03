@@ -7,6 +7,8 @@
 #include <unistd.h>
 #include <time.h>
 #include <dirent.h>
+#include <sys/wait.h>
+#include <signal.h>
 
 #define MAX_CONDITIONS 10
 
@@ -166,7 +168,27 @@ void add_report(const char *district_name, const char *role, const char *user) {
     if (fd != -1) {
         write(fd, &record, sizeof(ReportRecord));
         close(fd);
-        log_action(district_name, role, user, "add");
+        
+        char log_msg[256];
+        int pid_fd = open(".monitor_pid", O_RDONLY);
+        
+        if (pid_fd == -1) {
+            snprintf(log_msg, sizeof(log_msg), "add (Warning: monitor no-notified, file .monitor_pid missing!)");
+        } else {
+            char pid_buf[32] = {0};
+            read(pid_fd, pid_buf, sizeof(pid_buf) - 1);
+            close(pid_fd);
+            
+            pid_t monitor_pid = atoi(pid_buf);
+            
+            if (kill(monitor_pid, SIGUSR1) == 0) {
+                snprintf(log_msg, sizeof(log_msg), "add (Monitor notified successfully with SIGUSR1)");
+            } else {
+                snprintf(log_msg, sizeof(log_msg), "add (Warning: monitor no-notified, function kill() issue)");
+            }
+        }
+        
+        log_action(district_name, role, user, log_msg);
         printf("Raport added successfully!\n");
     }
 }
@@ -284,6 +306,37 @@ void remove_report(const char *district_name, int target_id, const char *role, c
     close(fd);
 }
 
+void remove_district(const char *district_name, const char *role, const char *user) {
+    if (strcmp(role, "manager") != 0) {
+        printf("Error: Only managers can remove districts!\n");
+        return;
+    }
+
+    if (strchr(district_name, '/') != NULL || strcmp(district_name, ".") == 0 || strcmp(district_name, "..") == 0) {
+        printf("Error: Invalid name of district.\n");
+        return;
+    }
+
+    char linkpath[256];
+    snprintf(linkpath, sizeof(linkpath), "active_reports-%s", district_name);
+    unlink(linkpath);
+
+    pid_t pid = fork();
+    
+    if (pid == -1) {
+        perror("Critical error at fork()");
+    } else if (pid == 0) {
+        execlp("rm", "rm", "-rf", district_name, NULL);
+        
+        perror("Error: execlp issue");
+        exit(1);
+    } else {
+        int status;
+        waitpid(pid, &status, 0);
+        printf("Command processed: Distric '%s' and all contents removed.\n", district_name);
+    }
+}
+
 void update_threshold(const char *district_name, int noul_prag, const char *role, const char *user) {
     if (strcmp(role, "manager") != 0) { printf("ERROR: Only for managers!\n"); return; }
     
@@ -370,6 +423,10 @@ int main(int argc, char *argv[]) {
         else if (strcmp(argv[i], "--check_links") == 0) { 
             action = "check_links"; 
         }
+        else if (strcmp(argv[i], "--remove_district") == 0 && i + 1 < argc) { 
+            action = "remove_district"; 
+            target_district = argv[++i]; 
+        }
     }
 
     if (!action) {
@@ -384,6 +441,7 @@ int main(int argc, char *argv[]) {
     else if (strcmp(action, "update_threshold") == 0) update_threshold(target_district, target_value, role, user);
     else if (strcmp(action, "filter") == 0) filter_reports(target_district, conditions, num_conditions, role, user);
     else if (strcmp(action, "check_links") == 0) check_links();
+    else if (strcmp(action, "remove_district") == 0) remove_district(target_district, role, user);
 
     return 0;
 }
