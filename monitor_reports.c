@@ -12,7 +12,7 @@ void handle_sigint(int sig) {
 }
 
 void handle_sigusr1(int sig) {
-    char msg[] = "\n[Monitor] Alert: New report added to system!\n";
+    char msg[] = "\n[Monitor] New report added to system!\n";
     write(STDOUT_FILENO, msg, sizeof(msg) - 1);
 }
 
@@ -23,7 +23,7 @@ int main() {
     sigemptyset(&sa_int.sa_mask);
     sa_int.sa_flags = 0;
     if (sigaction(SIGINT, &sa_int, NULL) == -1) {
-        perror("Error occured in configuration of SIGINT");
+        perror("[ERROR] Error occured in configuration of SIGINT");
         return 1;
     }
 
@@ -31,13 +31,13 @@ int main() {
     sigemptyset(&sa_usr1.sa_mask);
     sa_usr1.sa_flags = 0;
     if (sigaction(SIGUSR1, &sa_usr1, NULL) == -1) {
-        perror("Error occured in configuration of SIGUSR1");
+        perror("[ERROR] Error occured in configuration of SIGUSR1");
         return 1;
     }
 
     int fd = open(".monitor_pid", O_CREAT | O_WRONLY | O_TRUNC, 0644);
     if (fd == -1) {
-        perror("Error in creating .monitor_pid");
+        perror("[ERROR] Can't create .monitor_pid");
         return 1;
     }
 
@@ -55,7 +55,7 @@ int main() {
     printf("\n[Monitor] Signal SIGINT found. Closing application and removing .monitor_pid...\n");
     
     if (unlink(".monitor_pid") == -1) {
-        perror("Errr to removing .monitor_pid");
+        perror("[ERROR] Can't remove .monitor_pid");
     }
 
     return 0;

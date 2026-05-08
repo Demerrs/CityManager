@@ -173,7 +173,7 @@ void add_report(const char *district_name, const char *role, const char *user) {
         int pid_fd = open(".monitor_pid", O_RDONLY);
         
         if (pid_fd == -1) {
-            snprintf(log_msg, sizeof(log_msg), "add (Warning: monitor no-notified, file .monitor_pid missing!)");
+            snprintf(log_msg, sizeof(log_msg), "[ADD] Warning: monitor no-notified, file .monitor_pid missing!");
         } else {
             char pid_buf[32] = {0};
             read(pid_fd, pid_buf, sizeof(pid_buf) - 1);
@@ -182,14 +182,14 @@ void add_report(const char *district_name, const char *role, const char *user) {
             pid_t monitor_pid = atoi(pid_buf);
             
             if (kill(monitor_pid, SIGUSR1) == 0) {
-                snprintf(log_msg, sizeof(log_msg), "add (Monitor notified successfully with SIGUSR1)");
+                snprintf(log_msg, sizeof(log_msg), "[ADD] Monitor notified successfully with SIGUSR1");
             } else {
-                snprintf(log_msg, sizeof(log_msg), "add (Warning: monitor no-notified, function kill() issue)");
+                snprintf(log_msg, sizeof(log_msg), "[ADD] Warning: monitor no-notified, function kill() issue");
             }
         }
         
         log_action(district_name, role, user, log_msg);
-        printf("Raport added successfully!\n");
+        printf("Report added successfully!\n");
     }
 }
 
@@ -198,7 +198,7 @@ void list_reports(const char *district_name, const char *role, const char *user)
     snprintf(path, sizeof(path), "%s/reports.dat", district_name);
     
     int fd = open(path, O_RDONLY);
-    if (fd == -1) { printf("No raports.\n"); return; }
+    if (fd == -1) { printf("No reports.\n"); return; }
 
     ReportRecord rec;
     printf("%-5s | %-15s | %-10s | %-10s\n", "ID", "Inspector", "Category", "Severity");
@@ -215,7 +215,7 @@ void list_reports(const char *district_name, const char *role, const char *user)
 void filter_reports(const char *district_name, Condition *conds, int num_conds, const char *role, const char *user) {
     char path[256]; snprintf(path, sizeof(path), "%s/reports.dat", district_name);
     int fd = open(path, O_RDONLY);
-    if (fd == -1) { printf("No raport exists.\n"); return; }
+    if (fd == -1) { printf("No report exists.\n"); return; }
 
     ReportRecord rec; int found = 0;
     printf("Filter results:\n%-5s | %-15s | %-10s | %-10s\n", "ID", "Inspector", "Category", "Severity");
@@ -228,7 +228,7 @@ void filter_reports(const char *district_name, Condition *conds, int num_conds, 
         }
     }
     close(fd);
-    if (!found) printf("No raport which meet criteria.\n");
+    if (!found) printf("No report which meet criteria.\n");
     log_action(district_name, role, user, "filter");
 }
 
@@ -248,12 +248,12 @@ void view_report(const char *district_name, int target_id, const char *role, con
     }
     close(fd);
     if (found) log_action(district_name, role, user, "view");
-    else printf("Raport not found.\n");
+    else printf("Report not found.\n");
 }
 
 void remove_report(const char *district_name, int target_id, const char *role, const char *user) {
     if (strcmp(role, "manager") != 0) { 
-        printf("ERROR: Only manager can remove!\n"); 
+        printf("[ERROR] Only manager can remove!\n"); 
         return; 
     }
     
@@ -262,7 +262,7 @@ void remove_report(const char *district_name, int target_id, const char *role, c
     
     int fd = open(path, O_RDWR);
     if (fd == -1) {
-        perror("ERROR to open file for removing");
+        perror("[ERROR] Can't open file for removing");
         return;
     }
 
@@ -278,7 +278,7 @@ void remove_report(const char *district_name, int target_id, const char *role, c
     
     if (target_pos == -1) { 
         close(fd); 
-        printf("Rapor with ID %d not found.\n", target_id); 
+        printf("Report with ID %d not found.\n", target_id); 
         return; 
     }
 
@@ -297,10 +297,10 @@ void remove_report(const char *district_name, int target_id, const char *role, c
     }
     
     if (ftruncate(fd, write_pos) == 0) {
-        printf("Raport %d successfully removed!\n", target_id);
+        printf("Report %d successfully removed!\n", target_id);
         log_action(district_name, role, user, "remove_report");
     } else {
-        perror("ERROR at function ftruncate");
+        perror("[ERROR] at function ftruncate");
     }
     
     close(fd);
@@ -308,12 +308,12 @@ void remove_report(const char *district_name, int target_id, const char *role, c
 
 void remove_district(const char *district_name, const char *role, const char *user) {
     if (strcmp(role, "manager") != 0) {
-        printf("Error: Only managers can remove districts!\n");
+        printf("[ERROR] Only managers can remove districts!\n");
         return;
     }
 
     if (strchr(district_name, '/') != NULL || strcmp(district_name, ".") == 0 || strcmp(district_name, "..") == 0) {
-        printf("Error: Invalid name of district.\n");
+        printf("[ERROR] Invalid name of district.\n");
         return;
     }
 
@@ -328,7 +328,7 @@ void remove_district(const char *district_name, const char *role, const char *us
     } else if (pid == 0) {
         execlp("rm", "rm", "-rf", district_name, NULL);
         
-        perror("Error: execlp issue");
+        perror("[ERROR] execlp issue");
         exit(1);
     } else {
         int status;
@@ -338,13 +338,13 @@ void remove_district(const char *district_name, const char *role, const char *us
 }
 
 void update_threshold(const char *district_name, int noul_prag, const char *role, const char *user) {
-    if (strcmp(role, "manager") != 0) { printf("ERROR: Only for managers!\n"); return; }
+    if (strcmp(role, "manager") != 0) { printf("[ERROR] Only for managers!\n"); return; }
     
     char path[256]; snprintf(path, sizeof(path), "%s/district.cfg", district_name);
     struct stat st;
     
     if (stat(path, &st) == -1 || (st.st_mode & 0777) != 0640) {
-        printf("ERROR: No permissions to modify or file not exists!\n");
+        printf("[ERROR] No permissions to modify or file not exists!\n");
         return;
     }
 
@@ -362,7 +362,7 @@ void update_threshold(const char *district_name, int noul_prag, const char *role
 void check_links() {
     DIR *dir = opendir(".");
     if (!dir) {
-        perror("Error! Can't open current directory!'");
+        perror("[ERROR] Can't open current directory!'");
         return;
     }
 
