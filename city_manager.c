@@ -54,6 +54,11 @@ void ensure_district_files_exist(const char *district_name) {
     snprintf(path, sizeof(path), "%s/reports.dat", district_name);
     int fd = open(path, O_CREAT | O_RDWR, 0664);
     if (fd != -1) { close(fd); chmod(path, 0664); }
+    
+    char linkpath[256];
+    snprintf(linkpath, sizeof(linkpath), "active_reports-%s", district_name);
+
+    symlink(path, linkpath);
 
     snprintf(path, sizeof(path), "%s/district.cfg", district_name);
     int fd_cfg = open(path, O_CREAT | O_WRONLY | O_EXCL, 0640);
@@ -62,11 +67,6 @@ void ensure_district_files_exist(const char *district_name) {
         close(fd_cfg);
         chmod(path, 0640);
     }
-
-    char linkpath[256];
-    snprintf(linkpath, sizeof(linkpath), "active_reports-%s", district_name);
-
-    symlink(path, linkpath);
 }
 
 int get_next_report_id(const char *district_name) {
